@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Panel Administrador</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .stock-alert { color: #c1121f; font-weight: 600; }
+    .table thead th { white-space: nowrap; }
+    .modal-lg { max-width: 720px; } /* ~mitad de pantalla en desktop */
+  </style>
+</head>
+<body class="bg-light">
+  <div class="container py-4">
+
+    <!-- Header -->
+    <div class="d-flex align-items-center">
+      <h2 class="mb-0">Panel del Administrador</h2>
+      <a href="{% url 'logout' %}" class="btn btn-outline-secondary ms-auto">Cerrar sesión</a>
+    </div>
+
+    <!-- Aviso bajo stock -->
+    {% if productos_bajo_stock %}
+      <div class="alert alert-warning mt-3 stock-alert" role="alert">
+        <strong>⚠️ Atención:</strong> Algunos productos necesitan reponer stock:
+        <ul class="mb-0">
+          {% for producto in productos_bajo_stock %}
+            <li>{{ producto.nombre }} — Stock actual: {{ producto.cantidad }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mt-4" id="adminTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="inventario-tab" data-bs-toggle="tab" data-bs-target="#inventario-pane"
+                type="button" role="tab" aria-controls="inventario-pane" aria-selected="true">
+          Inventario de productos
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="historial-tab" data-bs-toggle="tab" data-bs-target="#historial-pane"
+                type="button" role="tab" aria-controls="historial-pane" aria-selected="false">
+          Historial de compras y ventas
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="analitica-tab" data-bs-toggle="tab" data-bs-target="#analitica-pane"
+                type="button" role="tab" aria-controls="analitica-pane" aria-selected="false">
+          Analítica
+        </button>
+      </li>
+    </ul>
+
+    <div class="tab-content pt-3" id="adminTabsContent">
+      <!-- Inventario -->
+      <div class="tab-pane fade show active" id="inventario-pane" role="tabpanel" aria-labelledby="inventario-tab">
+        <div class="card">
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-sm table-striped align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th>Nombre</th>
+                    <th style="min-width:220px;">Descripción</th>
+                    <th>Cantidad</th>
+                    <th>Stock Máx.</th>
+                    <th>Precio</th>
+                    <th>Ubicación</th>
+                    <th>Nº Ref.</th>
+                    <th>Color</th>
+                    <th>Proveedor</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for producto in productos %}
+                  <tr data-row-producto="{{ producto.id }}">
+                    <td>{{ producto.nombre }}</td>
+                    <td class="text-truncate" style="max-width:320px;">{{ producto.descripcion }}</td>
+                    <td class="td-cantidad">{{ producto.cantidad }}</td>
+                    <td>{{ producto.cantidad_maxima }}</td>
+                    <td class="td-precio">
+                      {{ producto.precio }} €
+                      {% if producto.oferta %}
+                        <span class="badge text-bg-warning">Oferta</span>
+                      {% endif %}
+                    </td>
+                    <td>{{ producto.ubicacion }}</td>
+                    <td>{{ producto.numero_referencia }}</td>
+                    <td>{{ producto.color|default:"-" }}</td>
+                    <td>
+                      <!-- Botón que abre modal Proveedor -->
+                      <button
+                        type="button"
+                        class="btn btn-outline-primary btn-sm"
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalProveedor"
+                        data-prov-id="{{ producto.proveedor.id }}"
+                        data-prod-id="{{ producto.id }}"
+                        data-prov-nombre="{{ producto.proveedor.nombre_empresa }}"
+                        data-prov-telefono="{{ producto.proveedor.telefono }}"
+                        data-prov-direccion="{{ producto.proveedor.direccion }}"
+                        data-prov-cif="{{ producto.proveedor.cif }}"
+                        data-prov-email="{{ producto.proveedor.email }}"
+                        data-prov-descuento="{{ producto.proveedor.porcentaje_descuento }}"
+                        data-prov-iva="{{ producto.proveedor.iva }}"
+                        data-prod="{{ producto.nombre }}"
+                      >
+                        {{ producto.proveedor.nombre_empresa }}
+                      </button>
+                    </td>
+                    <td>
+                      <!-- Botón que abre modal Editar -->
+                      <button
+                        class="btn btn-sm btn-primary"
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalEditarProducto"
+                        data-id="{{ producto.id }}"
+                        data-nombre="{{ producto.nombre }}"
+                        data-cantidad="{{ producto.cantidad }}"
+                        data-precio="{{ producto.precio }}"
+                        data-oferta="{{ producto.oferta|yesno:'true,false' }}"
+                      >Editar</button>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Historial -->
+      <div class="tab-pane fade" id="historial-pane" role="tabpanel" aria-labelledby="historial-tab">
+        <div class="row g-3">
+          <!-- Compras -->
+          <div class="col-12">
+            <div class="card">
+              <div class="card-header bg-light"><strong>Compras a proveedores</strong></div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table table-sm table-striped align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Fecha</th>
+                        <th>Proveedor</th>
+                        <th>Producto</th>
+                        <th>Cantidad</th>
+                        <th>Precio unit.</th>
+                        <th>Importe</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for c in compras %}
+                      <tr>
+                        <td>{{ c.fecha|date:"d/m/Y H:i" }}</td>
+                        <td>{{ c.proveedor.nombre_empresa }}</td>
+                        <td>{{ c.producto.nombre }}</td>
+                        <td>{{ c.cantidad }}</td>
+                        <td>{{ c.precio_unitario }} €</td>
+                        <td>
+                          <button
+                            class="btn btn-link p-0 precio-detalle"
+                            data-bs-toggle="modal"
+                            data-bs-target="#modalPrecio"
+                            data-tipo="compra"
+                            data-cant="{{ c.cantidad }}"
+                            data-precio="{{ c.precio_unitario }}"
+                            data-descuento="{{ c.proveedor.porcentaje_descuento|default:0 }}"
+                            data-iva="{{ c.proveedor.iva|default:0 }}"
+                            data-entidad="{{ c.proveedor.nombre_empresa }}"
+                            data-producto="{{ c.producto.nombre }}"
+                          >
+                            {{ c.total }} €
+                          </button>
+                        </td>
+                      </tr>
+                      {% empty %}
+                      <tr><td colspan="6" class="text-center text-muted">Sin registros de compras.</td></tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Ventas -->
+          <div class="col-12">
+            <div class="card">
+              <div class="card-header bg-light"><strong>Ventas a clientes</strong></div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table table-sm table-striped align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Fecha</th>
+                        <th>Cliente</th>
+                        <th>Producto</th>
+                        <th>Cantidad</th>
+                        <th>Precio unit.</th>
+                        <th>Importe</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for v in ventas %}
+                      <tr>
+                        <td>{{ v.fecha|date:"d/m/Y H:i" }}</td>
+                        <td>{{ v.cliente.username }}</td>
+                        <td>{{ v.producto.nombre }}</td>
+                        <td>{{ v.cantidad }}</td>
+                        <td>{{ v.precio_unitario }} €</td>
+                        <td>
+                          <button
+                            class="btn btn-link p-0 precio-detalle"
+                            data-bs-toggle="modal"
+                            data-bs-target="#modalPrecio"
+                            data-tipo="venta"
+                            data-cant="{{ v.cantidad }}"
+                            data-precio="{{ v.precio_unitario }}"
+                            data-entidad="{{ v.cliente.username }}"
+                            data-producto="{{ v.producto.nombre }}"
+                          >
+                            {{ v.total }} €
+                          </button>
+                        </td>
+                      </tr>
+                      {% empty %}
+                      <tr><td colspan="6" class="text-center text-muted">Sin registros de ventas.</td></tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Por producto (desglose unificado en modal) -->
+          <div class="col-12">
+            <div class="card">
+              <div class="card-header bg-light d-flex align-items-center">
+                <strong>Historial por producto</strong>
+                <div class="ms-auto small text-muted">Click en “Ver desglose”</div>
+              </div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table table-sm table-striped align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Producto</th>
+                        <th class="text-end">Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for p in productos %}
+                      <tr>
+                        <td>{{ p.nombre }}</td>
+                        <td class="text-end">
+                          <button class="btn btn-outline-primary btn-sm"
+                                  data-bs-toggle="modal"
+                                  data-bs-target="#modalHistProducto"
+                                  data-producto-id="{{ p.id }}"
+                                  data-producto-nombre="{{ p.nombre }}">
+                            Ver desglose
+                          </button>
+                        </td>
+                      </tr>
+                      {% empty %}
+                      <tr><td colspan="2" class="text-center text-muted">Sin productos.</td></tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div> <!-- /row -->
+      </div>
+
+      <!-- Analítica -->
+        <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+
+          <!-- Rango -->
+          <div class="btn-group" role="group" aria-label="Rango">
+            <button class="btn btn-outline-primary" data-a-range="1m">1 mes</button>
+            <button class="btn btn-outline-primary" data-a-range="6m">6 meses</button>
+            <button class="btn btn-outline-primary active" data-a-range="all">Todo</button>
+          </div>
+
+          <!-- Agrupar (mantengo lo que ya tenías) -->
+          <div class="btn-group ms-2" role="group" aria-label="Agrupar">
+            <button class="btn btn-outline-secondary active" data-a-group="producto">Por producto</button>
+            <button class="btn btn-outline-secondary" data-a-group="proveedor">Por proveedor</button>
+          </div>
+
+          <!-- Modo de vista tipo “bolsa” -->
+          <div class="btn-group ms-2" role="group" aria-label="Modo">
+            <button class="btn btn-outline-dark active" data-a-mode="top5">Más vendidos</button>
+            <button class="btn btn-outline-dark" data-a-mode="bottom5">Menos vendidos</button>
+            <button class="btn btn-outline-dark" data-a-mode="recent5">Más vendidos recientemente</button>
+          </div>
+
+          <div class="ms-auto small text-muted" id="anltRango"></div>
+        </div>
+
+
+            <!-- Gráfica + Stats -->
+            <div class="row g-3">
+              <div class="col-12 col-lg-8">
+                <div class="border rounded p-2" style="height: 360px;">
+                  <canvas id="chartAnalitica"></canvas>
+                </div>
+              </div>
+
+              <div class="col-12 col-lg-4">
+                <div class="border rounded p-3 h-100">
+                  <h6 class="mb-3">Estadísticas</h6>
+                  <div id="anltStats" class="small">
+                    <!-- se rellena por JS -->
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div> <!-- /tab-content -->
+
+    <!-- ============ MODALES ============ -->
+
+    <!-- Modal Proveedor (solicitud reposición) -->
+    <div class="modal fade" id="modalProveedor" tabindex="-1" aria-labelledby="modalProveedorLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 id="modalProveedorLabel" class="modal-title">Proveedor</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row g-3">
+              <div class="col-12">
+                <h6 class="mb-1">Datos del proveedor</h6>
+                <div class="small text-muted">Consulta la información y contacta para solicitar reposición.</div>
+              </div>
+
+              <div class="col-md-6">
+                <div class="list-group small">
+                  <div class="list-group-item d-flex justify-content-between">
+                    <span class="text-muted">Empresa</span>
+                    <strong id="provNombre"></strong>
+                  </div>
+                  <div class="list-group-item d-flex justify-content-between">
+                    <span class="text-muted">CIF</span>
+                    <strong id="provCif"></strong>
+                  </div>
+                  <div class="list-group-item d-flex justify-content-between">
+                    <span class="text-muted">Teléfono</span>
+                    <strong id="provTelefono"></strong>
+                  </div>
+                  <div class="list-group-item d-flex justify-content-between">
+                    <span class="text-muted">Email</span>
+                    <strong><a id="provEmail" href="#" target="_blank"></a></strong>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <div class="list-group small">
+                  <div class="list-group-item">
+                    <span class="text-muted d-block">Dirección</span>
+                    <strong id="provDireccion"></strong>
+                  </div>
+                  <div class="list-group-item d-flex justify-content-between">
+                    <span class="text-muted">Descuento</span>
+                    <strong id="provDescuento"></strong>
+                  </div>
+                  <div class="list-group-item d-flex justify-content-between">
+                    <span class="text-muted">IVA</span>
+                    <strong id="provIva"></strong>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Formulario de solicitud -->
+              <div class="col-12 mt-2">
+                <label for="mensajeProveedor" class="form-label">Mensaje al proveedor</label>
+                <textarea id="mensajeProveedor" class="form-control" rows="4"
+                  placeholder="Hola, necesitamos reponer unidades del producto…"></textarea>
+
+                <input type="hidden" id="provId" name="proveedor_id">
+                <input type="hidden" id="prodId" name="producto_id">
+
+                <div class="row mt-2">
+                  <div class="col-md-6">
+                    <label class="form-label">Cantidad a solicitar</label>
+                    <input type="number" id="cantidadSolicitada" name="cantidad" class="form-control" min="1" value="1">
+                  </div>
+                </div>
+                <div class="form-text">Incluye el producto, cantidad estimada y cualquier observación.</div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <div id="solicitudMsg" class="me-auto small"></div>
+            <button type="button" id="btnEnviarSolicitud" class="btn btn-primary">Enviar solicitud</button>
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Editar Producto (stock/precio/oferta) -->
+    <div class="modal fade" id="modalEditarProducto" tabindex="-1" aria-labelledby="modalEditarProductoLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 id="modalEditarProductoLabel" class="modal-title">Editar producto</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+          <div class="modal-body">
+            <div id="editMsg" class="small mb-2"></div>
+            <form id="formEditarProducto">
+              <input type="hidden" name="producto_id" id="editProductoId">
+
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label">Acción de stock</label>
+                  <select class="form-select" name="accion" id="editAccion">
+                    <option value="entrada">Entrada (sumar)</option>
+                    <option value="salida">Salida (restar)</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Cantidad</label>
+                  <input type="number" class="form-control" name="cantidad" id="editCantidad" min="1" value="1">
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label">Precio proveedor (solo si es entrada)</label>
+                  <input type="number" step="0.01" class="form-control" name="precio_unitario_proveedor" id="editPrecioProv" placeholder="Ej: 5.25">
+                  <div class="form-text">Si lo rellenas en una entrada, se registrará una compra en el historial.</div>
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label">Nuevo precio de venta (opcional)</label>
+                  <input type="number" step="0.01" class="form-control" name="nuevo_precio" id="editNuevoPrecio" placeholder="Ej: 9.99">
+                </div>
+
+                <div class="col-12">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="editOferta" name="oferta">
+                    <label class="form-check-label" for="editOferta">Marcar como oferta</label>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button id="btnGuardarEdicion" class="btn btn-primary">Guardar</button>
+            <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Desglose de Precio (compras/ventas) -->
+    <div class="modal fade" id="modalPrecio" tabindex="-1" aria-labelledby="modalPrecioLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 id="modalPrecioLabel" class="modal-title">Desglose de precio</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+          <div class="modal-body">
+            <div class="small text-muted mb-2" id="precioEntidad"></div>
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <tbody id="precioTabla">
+                  <!-- Se rellena por JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  <!-- Modal Historial por Producto -->
+    <div class="modal fade" id="modalHistProducto" tabindex="-1" aria-labelledby="modalHistProductoLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 id="modalHistProductoLabel" class="modal-title">Historial — </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+          <div class="modal-body">
+            <div id="histProdResumen" class="small mb-2 text-muted"></div>
+            <div class="table-responsive">
+              <table class="table table-sm align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th>Tipo</th>
+                    <th>Fecha</th>
+                    <th>Entidad</th>
+                    <th class="text-end">Cant.</th>
+                    <th class="text-end">P. unit.</th>
+                    <th class="text-end">Total</th>
+                  </tr>
+                </thead>
+                <tbody id="histProdBody">
+                  <!-- se rellena por JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <div id="histProdMsg" class="me-auto small"></div>
+            <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div> <!-- /container -->
+
+  <!-- JS base -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- JS: util y modales (Proveedor / Editar / Desglose) -->
+  <script>
+    /* ===== Util: CSRF desde cookie ===== */
+    function getCookie(name) {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
+    }
+    const CSRF_TOKEN = getCookie('csrftoken');
+
+    /* ===== Modal Proveedor (solicitud) ===== */
+    const modalProvEl = document.getElementById('modalProveedor');
+    const msgEl = document.getElementById('solicitudMsg');
+    const btnEnviar = document.getElementById('btnEnviarSolicitud');
+
+    modalProvEl.addEventListener('show.bs.modal', function (event) {
+      const btn = event.relatedTarget;
+
+      const nombre     = btn.getAttribute('data-prov-nombre') || '';
+      const telefono   = btn.getAttribute('data-prov-telefono') || '';
+      const direccion  = btn.getAttribute('data-prov-direccion') || '';
+      const cif        = btn.getAttribute('data-prov-cif') || '';
+      const email      = btn.getAttribute('data-prov-email') || '';
+      const descuento  = btn.getAttribute('data-prov-descuento') || '';
+      const iva        = btn.getAttribute('data-prov-iva') || '';
+      const prod       = btn.getAttribute('data-prod') || '';
+
+      const provIdAttr = btn.getAttribute('data-prov-id');
+      const prodIdAttr = btn.getAttribute('data-prod-id');
+
+      modalProvEl.querySelector('#modalProveedorLabel').textContent = `Proveedor: ${nombre}`;
+      modalProvEl.querySelector('#provNombre').textContent = nombre;
+      modalProvEl.querySelector('#provCif').textContent = cif;
+      modalProvEl.querySelector('#provTelefono').textContent = telefono;
+      modalProvEl.querySelector('#provDireccion').textContent = direccion;
+      modalProvEl.querySelector('#provDescuento').textContent = descuento ? `${descuento}%` : '-';
+      modalProvEl.querySelector('#provIva').textContent = iva ? `${iva}%` : '-';
+
+      const emailLink = modalProvEl.querySelector('#provEmail');
+      emailLink.textContent = email;
+      emailLink.href = email ? `mailto:${email}` : '#';
+
+      const textarea = modalProvEl.querySelector('#mensajeProveedor');
+      textarea.value = `Hola ${nombre},\n\nNecesitamos reponer stock del producto "${prod}".\nCantidad estimada: ____\nObservaciones: ____\n\nGracias.`;
+
+      modalProvEl.querySelector('#provId').value = provIdAttr || '';
+      modalProvEl.querySelector('#prodId').value = prodIdAttr || '';
+
+      msgEl.className = 'me-auto small';
+      msgEl.textContent = '';
+    });
+
+    btnEnviar.addEventListener('click', async () => {
+      msgEl.textContent = '';
+      btnEnviar.disabled = true;
+      try {
+        const datos = new FormData();
+        datos.append('proveedor_id', document.getElementById('provId').value);
+        datos.append('producto_id', document.getElementById('prodId').value);
+        datos.append('cantidad', document.getElementById('cantidadSolicitada').value);
+        datos.append('mensaje', document.getElementById('mensajeProveedor').value);
+
+        const resp = await fetch("{% url 'enviar_mensaje_proveedor' %}", {
+          method: 'POST',
+          headers: { 'X-CSRFToken': CSRF_TOKEN },
+          body: datos
+        });
+        const json = await resp.json();
+
+        if (!json.ok) {
+          msgEl.className = 'me-auto small text-danger';
+          msgEl.textContent = json.error || 'Error al enviar la solicitud.';
+        } else {
+          msgEl.className = 'me-auto small text-success';
+          msgEl.textContent = 'Solicitud enviada y registrada correctamente.';
+          setTimeout(() => {
+            const modal = bootstrap.Modal.getInstance(modalProvEl);
+            modal.hide();
+          }, 1000);
+        }
+      } catch (e) {
+        msgEl.className = 'me-auto small text-danger';
+        msgEl.textContent = 'No se pudo enviar la solicitud. Inténtalo de nuevo.';
+      } finally {
+        btnEnviar.disabled = false;
+      }
+    });
+
+    /* ===== Modal Editar Producto (stock/precio/oferta) ===== */
+    const modalEditEl = document.getElementById('modalEditarProducto');
+    const formEdit = document.getElementById('formEditarProducto');
+    const editMsg = document.getElementById('editMsg');
+
+    modalEditEl.addEventListener('show.bs.modal', function (event) {
+      const btn = event.relatedTarget;
+      const id = btn.getAttribute('data-id');
+      const nombre = btn.getAttribute('data-nombre');
+      const oferta = btn.getAttribute('data-oferta') === 'true';
+
+      modalEditEl.querySelector('#modalEditarProductoLabel').textContent = `Editar: ${nombre}`;
+      formEdit.querySelector('#editProductoId').value = id;
+      formEdit.querySelector('#editCantidad').value = 1;
+      formEdit.querySelector('#editAccion').value = 'entrada';
+      formEdit.querySelector('#editPrecioProv').value = '';
+      formEdit.querySelector('#editNuevoPrecio').value = '';
+      formEdit.querySelector('#editOferta').checked = oferta;
+
+      editMsg.className = 'small mb-2';
+      editMsg.textContent = '';
+    });
+
+    document.getElementById('btnGuardarEdicion').addEventListener('click', async () => {
+      editMsg.className = 'small mb-2';
+      editMsg.textContent = '';
+
+      const datos = new FormData(formEdit);
+      if (datos.get('accion') === 'salida') { datos.set('precio_unitario_proveedor', ''); }
+      datos.set('oferta', formEdit.querySelector('#editOferta').checked ? 'true' : 'false');
+
+      try {
+        const resp = await fetch("{% url 'admin_actualizar_producto' %}", {
+          method: 'POST',
+          headers: { 'X-CSRFToken': CSRF_TOKEN },
+          body: datos
+        });
+        const json = await resp.json();
+        if (!json.ok) {
+          editMsg.className = 'small mb-2 text-danger';
+          editMsg.textContent = json.error || 'No se pudo guardar.';
+          return;
+        }
+        // Recarga para ver cambios reflejados
+        location.reload();
+      } catch (e) {
+        editMsg.className = 'small mb-2 text-danger';
+        editMsg.textContent = 'Error de red. Inténtalo de nuevo.';
+      }
+    });
+
+    /* ===== Modal Desglose Precio (compras/ventas) ===== */
+    const modalPrecio = document.getElementById('modalPrecio');
+    modalPrecio.addEventListener('show.bs.modal', function (event) {
+      const btn = event.relatedTarget;
+      const tipo = btn.getAttribute('data-tipo');       // 'compra' o 'venta'
+      const cant = parseFloat(btn.getAttribute('data-cant')) || 0;
+      const precio = parseFloat(btn.getAttribute('data-precio')) || 0;
+      const entidad = btn.getAttribute('data-entidad') || '';
+      const producto = btn.getAttribute('data-producto') || '';
+
+      const tabla = modalPrecio.querySelector('#precioTabla');
+      const etiqueta = modalPrecio.querySelector('#precioEntidad');
+      const titulo = modalPrecio.querySelector('#modalPrecioLabel');
+
+      titulo.textContent = `Desglose de ${tipo === 'compra' ? 'compra' : 'venta'} — ${producto}`;
+      etiqueta.textContent = `${tipo === 'compra' ? 'Proveedor' : 'Cliente'}: ${entidad}`;
+
+      const base = +(precio * cant).toFixed(2);
+      let html = `
+        <tr><th style="width:50%">Cantidad</th><td>${cant}</td></tr>
+        <tr><th>Precio unitario</th><td>${precio.toFixed(2)} €</td></tr>
+        <tr><th>Importe</th><td><strong>${base.toFixed(2)} €</strong></td></tr>
+      `;
+
+      if (tipo === 'compra') {
+        const descuento = parseFloat(btn.getAttribute('data-descuento')) || 0;
+        const iva = parseFloat(btn.getAttribute('data-iva')) || 0;
+        const importeDesc = +(base * (descuento / 100)).toFixed(2);
+        const baseTrasDesc = +(base - importeDesc).toFixed(2);
+        const importeIva = +(baseTrasDesc * (iva / 100)).toFixed(2);
+        const total = +(baseTrasDesc + importeIva).toFixed(2);
+
+        html += `
+          <tr><th>Descuento (${descuento}%)</th><td>- ${importeDesc.toFixed(2)} €</td></tr>
+          <tr><th>Base tras descuento</th><td>${baseTrasDesc.toFixed(2)} €</td></tr>
+          <tr><th>IVA (${iva}%)</th><td>+ ${importeIva.toFixed(2)} €</td></tr>
+          <tr class="table-light"><th>Total</th><td><strong>${total.toFixed(2)} €</strong></td></tr>
+        `;
+      } else {
+        html += `<tr class="table-light"><th>Total</th><td><strong>${base.toFixed(2)} €</strong></td></tr>`;
+      }
+
+      tabla.innerHTML = html;
+    });
+  </script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+ <script>
+  // ===== Analítica (línea tipo bolsa) =====
+  let aRange = 'all';       // '1m' | '6m' | 'all'
+  let aGroup = 'producto';  // 'producto' | 'proveedor'
+  let aMode  = 'top5';      // 'top5' | 'bottom5' | 'recent5'
+  let aChart = null;
+
+  function setChartEmpty(msg) {
+    const cont = document.getElementById('chartAnalitica').parentElement;
+    cont.innerHTML = `
+      <div class="d-flex align-items-center justify-content-center h-100 text-muted">
+        <div class="text-center">
+          <div class="mb-2">📉</div>
+          <div>${msg}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  function ensureCanvas() {
+    const cont = document.getElementById('chartAnalitica').parentElement;
+    if (!cont.querySelector('canvas')) {
+      const c = document.createElement('canvas');
+      c.id = 'chartAnalitica';
+      cont.innerHTML = '';
+      cont.appendChild(c);
+    }
+    return document.getElementById('chartAnalitica');
+  }
+
+  async function fetchJSON(url) {
+    const r = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }});
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return await r.json();
+  }
+
+  async function loadAnalitica() {
+    const url = `{% url 'admin_analytics_data' %}?range=${aRange}&group=${aGroup}&mode=${aMode}`;
+    let data;
+    try {
+      data = await fetchJSON(url);
+      console.log('[Analítica:data]', data);
+    } catch (e) {
+      setChartEmpty('No se pudo cargar la gráfica (endpoint no disponible).');
+      return;
+    }
+
+    document.getElementById('anltRango').textContent = `Período: ${data.desde} – ${data.hasta}`;
+
+    if (!data.labels || data.labels.length === 0) {
+      if (aChart) { aChart.destroy(); aChart = null; }
+      setChartEmpty('Sin datos para el rango seleccionado.');
+      return;
+    }
+
+    const canvas = ensureCanvas();
+    const ctx = canvas.getContext('2d');
+
+    if (aChart) aChart.destroy();
+    aChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: data.labels,
+        datasets: [{
+          label: 'Beneficio (€)',
+          data: data.beneficio,      // línea basada en beneficio
+          fill: false,
+          borderWidth: 2,
+          tension: 0.25,
+          pointRadius: 2,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' }, tooltip: { mode: 'index', intersect: false } },
+        interaction: { mode: 'nearest', intersect: false },
+        scales: {
+          y: {
+            beginAtZero: true,
+            grid: { color: 'rgba(0,0,0,.06)' },
+            ticks: { callback: (v) => v + '€' }
+          },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+  }
+
+  async function loadAnaliticaStats() {
+    const url = `{% url 'admin_analytics_stats' %}?range=${aRange}&group=${aGroup}`;
+    let s;
+    try {
+      s = await fetchJSON(url);
+      console.log('[Analítica:stats]', s);
+    } catch (e) {
+      document.getElementById('anltStats').innerHTML =
+        '<div class="text-danger">No se pudieron cargar las estadísticas.</div>';
+      return;
+    }
+
+    const el = document.getElementById('anltStats');
+    const top = (s.top_labels || []).map((lbl, i) => {
+      const ben = Number((s.top_beneficio || [])[i] || 0);
+      return `<li class="list-group-item d-flex justify-content-between"><span>${lbl}</span><strong>${ben.toFixed(2)} €</strong></li>`;
+    }).join('');
+
+    el.innerHTML = `
+      <div class="mb-2 text-muted">Rango: ${s.desde} – ${s.hasta}</div>
+      <div class="mb-2"><strong>Total ventas:</strong> ${Number(s.total_ventas||0).toFixed(2)} €</div>
+      <div class="mb-2"><strong>Total costes:</strong> ${Number(s.total_coste||0).toFixed(2)} €</div>
+      <div class="mb-3"><strong>Beneficio neto:</strong> ${Number(s.total_beneficio||0).toFixed(2)} €</div>
+      <div class="mb-1"><strong>Top 5 por beneficio (${aGroup}):</strong></div>
+      <ul class="list-group list-group-flush">${top || '<li class="list-group-item text-muted">Sin datos</li>'}</ul>
+    `;
+  }
+
+  // Eventos de controles (rango / agrupar / modo)
+  document.addEventListener('click', async (e) => {
+    if (e.target.matches('[data-a-range]')) {
+      e.preventDefault();
+      document.querySelectorAll('[data-a-range]').forEach(b=>b.classList.remove('active'));
+      e.target.classList.add('active');
+      aRange = e.target.getAttribute('data-a-range');
+      await Promise.all([loadAnalitica(), loadAnaliticaStats()]);
+    }
+    if (e.target.matches('[data-a-group]')) {
+      e.preventDefault();
+      document.querySelectorAll('[data-a-group]').forEach(b=>b.classList.remove('active'));
+      e.target.classList.add('active');
+      aGroup = e.target.getAttribute('data-a-group');
+      await Promise.all([loadAnalitica(), loadAnaliticaStats()]);
+    }
+    if (e.target.matches('[data-a-mode]')) {
+      e.preventDefault();
+      document.querySelectorAll('[data-a-mode]').forEach(b=>b.classList.remove('active'));
+      e.target.classList.add('active');
+      aMode = e.target.getAttribute('data-a-mode');
+      await loadAnalitica();  // stats no dependen del modo; solo de rango/grupo
+    }
+  });
+
+  // Cargar al mostrar la pestaña Analítica
+  const tabAnalitica = document.getElementById('analitica-tab');
+  tabAnalitica.addEventListener('shown.bs.tab', async () => {
+    await Promise.all([loadAnalitica(), loadAnaliticaStats()]);
+  });
+</script>
+
+<script>
+  // ===== Modal Historial por Producto =====
+  const modalHistProd = document.getElementById('modalHistProducto');
+  modalHistProd.addEventListener('show.bs.modal', async (ev) => {
+    const btn = ev.relatedTarget;
+    const prodId = btn.getAttribute('data-producto-id');
+    const prodNombre = btn.getAttribute('data-producto-nombre') || '';
+
+    // Título
+    modalHistProd.querySelector('#modalHistProductoLabel').textContent = `Historial — ${prodNombre}`;
+
+    // Mensajes/limpieza
+    const bodyEl = modalHistProd.querySelector('#histProdBody');
+    const resumenEl = modalHistProd.querySelector('#histProdResumen');
+    const msgEl = modalHistProd.querySelector('#histProdMsg');
+    bodyEl.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Cargando…</td></tr>';
+    resumenEl.textContent = '';
+    msgEl.textContent = '';
+
+    try {
+      // Puedes pasar el mismo rango que tengas seleccionado en la pestaña Historial (si quisieras);
+      // por simplicidad, lo dejamos sin parámetro (usar “all”) o añade ?range=1m/6m/all
+      const resp = await fetch(`/panel/api/historial/producto/${prodId}/?range=all`, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const data = await resp.json();
+      if (!data.ok) throw new Error(data.error || 'No se pudo cargar el historial');
+
+      // Resumen
+      resumenEl.innerHTML = `
+        Rango: ${data.range === 'all' ? 'todo' : data.range} |
+        Total ventas: <strong>${Number(data.resumen.total_ventas).toFixed(2)} €</strong> —
+        Total compras: <strong>${Number(data.resumen.total_compras).toFixed(2)} €</strong> —
+        Margen: <strong>${Number(data.resumen.margen).toFixed(2)} €</strong>
+      `;
+
+      // Tabla
+      if (!data.filas.length) {
+        bodyEl.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Sin movimientos.</td></tr>';
+      } else {
+        bodyEl.innerHTML = data.filas.map(f => `
+          <tr>
+            <td>
+              <span class="badge ${f.tipo === 'venta' ? 'text-bg-success' : 'text-bg-secondary'}">
+                ${f.tipo === 'venta' ? 'Venta' : 'Compra'}
+              </span>
+            </td>
+            <td>${f.fecha}</td>
+            <td>${f.entidad || '—'}</td>
+            <td class="text-end">${f.cantidad}</td>
+            <td class="text-end">${Number(f.precio_unit).toFixed(2)} €</td>
+            <td class="text-end"><strong>${Number(f.total).toFixed(2)} €</strong></td>
+          </tr>
+        `).join('');
+      }
+    } catch (e) {
+      bodyEl.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error al cargar el historial.</td></tr>';
+      console.error(e);
+    }
+  });
+</script>
+
+</body>
+</html>

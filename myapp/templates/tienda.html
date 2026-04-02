@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <title>Tienda</title>
+    <link rel="stylesheet" href="{% static '/style.css' %}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+      /* Offcanvas de ventas a media pantalla en >= 992px */
+      @media (min-width: 992px) {
+        .ventas-offcanvas { width: 50vw; max-width: 720px; }
+      }
+    </style>
+    <link rel="stylesheet" href="{% static 'bootstrap.min.css' %}">
+</head>
+<body>
+
+<!-- Offcanvas Filtros -->
+<div id="sidebarFiltros" class="offcanvas offcanvas-start" tabindex="-1" aria-labelledby="sidebarFiltrosLabel">
+  <div class="offcanvas-header">
+    <h5 id="sidebarFiltrosLabel" class="offcanvas-title">Filtros</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+  </div>
+  <div class="offcanvas-body">
+    <form method="get">
+      <!-- Buscar por nombre -->
+      <div class="mb-3">
+        <label class="form-label">Nombre</label>
+        <input type="text" class="form-control" name="q" value="{{ request.GET.q }}">
+      </div>
+
+      <!-- Categoría -->
+      <div class="mb-3">
+        <label class="form-label">Categoría</label>
+        <select class="form-select" name="categoria">
+          <option value="">Todas</option>
+          {% for cat in categorias %}
+            <option value="{{ cat.id }}" {% if cat.seleccionada %}selected{% endif %}>{{ cat.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Precio máximo -->
+      <div class="mb-3">
+        <label class="form-label">Precio máximo (€)</label>
+        <input type="number" class="form-control" name="precio_max" step="0.01" value="{{ request.GET.precio_max }}">
+      </div>
+
+      <!-- Orden -->
+      <div class="mb-3">
+        <label class="form-label">Ordenar por</label>
+        <select class="form-select" name="orden">
+          <option value="">Por defecto</option>
+          <option value="recientes" {% if orden_recientes %}selected{% endif %}>Más recientes</option>
+          <option value="antiguos" {% if orden_antiguos %}selected{% endif %}>Más antiguos</option>
+          <option value="mas_vendidos" {% if orden_mas_vendidos %}selected{% endif %}>Más vendidos</option>
+          <option value="ofertas" {% if orden_ofertas %}selected{% endif %}>En oferta</option>
+        </select>
+      </div>
+
+      <!-- Botón aplicar -->
+      <div class="d-grid">
+        <button type="submit" class="btn btn-primary">Aplicar filtros</button>
+      </div>
+    </form>
+  </div>
+</div>
+<!-- /Offcanvas Filtros -->
+
+<!-- Offcanvas Ventas -->
+<div id="offcanvasVentas" class="offcanvas offcanvas-start ventas-offcanvas" tabindex="-1" aria-labelledby="offcanvasVentasLabel">
+  <div class="offcanvas-header">
+    <h5 id="offcanvasVentasLabel" class="offcanvas-title">Top 5 productos más vendidos</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+  </div>
+
+  <div class="offcanvas-body d-flex flex-column gap-3">
+    <!-- Controles de rango -->
+    <div class="btn-group" role="group" aria-label="Rango de fechas">
+      <button type="button" class="btn btn-outline-primary" data-range="1m">Último mes</button>
+      <button type="button" class="btn btn-outline-primary active" data-range="3m">3 últimos meses</button>
+      <button type="button" class="btn btn-outline-primary" data-range="1y">Último año</button>
+    </div>
+
+    <!-- Texto de rango -->
+    <div id="ventasRango" class="text-muted small"></div>
+
+    <!-- Lienzo de la gráfica -->
+    <div style="height: 360px;">
+      <canvas id="graficoVentas"></canvas>
+    </div>
+  </div>
+</div>
+<!-- /Offcanvas Ventas -->
+
+<main class="container-lg py-3">
+  <h1 class="mb-3">Bienvenido a la tienda</h1>
+
+  <!-- Header con acciones a la derecha -->
+  <div class="d-flex align-items-center mb-4">
+    <div class="ms-auto d-flex align-items-center gap-2">
+      <a class="btn btn-outline-secondary" href="{% url 'ver_carrito' %}">🛒 Carrito</a>
+      <a class="btn btn-primary" href="{% url 'mi_cuenta' %}">Mi cuenta</a>
+      <button class="btn btn-outline-primary" data-bs-toggle="offcanvas" data-bs-target="#sidebarFiltros">🔍 Filtros</button>
+    </div>
+  </div>
+
+  <hr class="my-4">
+
+  <h2 class="mb-3">Productos Disponibles</h2>
+
+  <!-- Botón para abrir offcanvas de ventas -->
+  <div class="d-flex align-items-center mb-3">
+    <button class="btn btn-outline-secondary" data-bs-toggle="offcanvas" data-bs-target="#offcanvasVentas">📊 Ventas</button>
+  </div>
+
+  <!-- Listado de productos -->
+  <div id="productos" class="container px-0 mt-3">
+    {% if productos %}
+      <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        {% for producto in productos %}
+          <div class="col d-flex">
+            <div class="card shadow-sm rounded h-100 d-flex flex-column w-100 text-center">
+              {% if producto.oferta %}
+                <div class="ribbon ribbon-top-right"><span>OFERTA</span></div>
+              {% endif %}
+
+              {% if producto.imagen %}
+                <img src="{{ producto.imagen.url }}" class="card-img-top"
+                     alt="{{ producto.nombre }}" style="height: 180px; object-fit: cover;">
+              {% else %}
+                <img src="https://via.placeholder.com/300x200.png?text={{ producto.nombre|urlencode }}"
+                     class="card-img-top" alt="Imagen producto" style="height: 180px; object-fit: cover;">
+              {% endif %}
+
+              <div class="card-body d-flex flex-column">
+                <h6 class="card-title">{{ producto.nombre }}</h6>
+                <p class="card-text">{{ producto.descripcion|default:"Sin descripción"|truncatewords:15 }}</p>
+
+                {% if producto.oferta %}
+                  <div class="mt-2">
+                    <span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle px-2 py-1">
+                      Oferta
+                    </span>
+                    <span class="precio-oferta ms-2">{{ producto.precio }} €</span>
+                  </div>
+                {% else %}
+                  <p class="card-text fw-bold mt-2">{{ producto.precio }} €</p>
+                {% endif %}
+
+                {% if producto.cantidad < 10 %}
+                  <p class="text-danger small">¡Quedan pocas unidades!</p>
+                {% endif %}
+
+                <a href="{% url 'detalle_producto' producto.id %}" class="btn btn-primary w-100 mt-auto">Ver más</a>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>  {# <- cierre del .row #}
+    {% else %}
+      <p class="text-center">No hay productos disponibles.</p>
+    {% endif %}
+  </div>  {# <- cierre de #productos #}
+
+  <hr class="my-4">
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  let ventasChart = null;
+
+  function loadVentas(range = '3m') {
+    const url = `{% url 'datos_ventas' %}?range=${range}`;
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        const canvas = document.getElementById('graficoVentas');
+        const ctx = canvas.getContext('2d');
+
+        // Texto de rango
+        const rangoEl = document.getElementById('ventasRango');
+        rangoEl.textContent = `Período: ${data.desde} – ${data.hasta}`;
+
+        // Degradado
+        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        gradient.addColorStop(0, 'rgba(54,162,235,0.85)');
+        gradient.addColorStop(1, 'rgba(54,162,235,0.25)');
+
+        if (ventasChart) ventasChart.destroy();
+
+        ventasChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: data.labels,
+            datasets: [{
+              label: 'Unidades vendidas',
+              data: data.data,
+              backgroundColor: gradient,
+              borderColor: 'rgba(54,162,235,1)',
+              borderWidth: 1.6,
+              borderRadius: 8,
+              maxBarThickness: 44,
+              barPercentage: 0.7,
+              categoryPercentage: 0.7,
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              y: {
+                beginAtZero: true,
+                grid: { color: 'rgba(0,0,0,0.06)' },
+                ticks: { precision: 0 },
+                title: { display: true, text: 'Cantidad vendida' }
+              },
+              x: {
+                grid: { display: false },
+                ticks: { maxRotation: 0, minRotation: 0 },
+                title: { display: true, text: 'Producto' }
+              }
+            },
+            animation: { duration: 900, easing: 'easeOutQuart' }
+          }
+        });
+      });
+  }
+
+  // Activar botones de rango dentro del offcanvas
+  document.addEventListener('click', (e) => {
+    if (e.target.matches('#offcanvasVentas [data-range]')) {
+      const all = document.querySelectorAll('#offcanvasVentas [data-range]');
+      all.forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      loadVentas(e.target.getAttribute('data-range'));
+    }
+  });
+
+  // Cargar al abrir el offcanvas (por defecto 3m)
+  const offcanvasVentasEl = document.getElementById('offcanvasVentas');
+  offcanvasVentasEl.addEventListener('shown.bs.offcanvas', () => {
+    const activeBtn = offcanvasVentasEl.querySelector('[data-range].active');
+    const range = activeBtn ? activeBtn.getAttribute('data-range') : '3m';
+    loadVentas(range);
+  });
+</script>
+</body>
+</html>
+

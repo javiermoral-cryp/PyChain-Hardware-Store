@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <title>Pago Exitoso</title>
+    <link rel="stylesheet" href="{% static 'bootstrap.min.css' %}">
+</head>
+<body>
+    <main class="container py-5">
+        <div class="alert alert-success text-center">
+            <h3>{{ mensaje }}</h3>
+            <a href="{% url 'vista_cliente' %}" class="btn btn-primary mt-3">
+                Volver a la tienda
+            </a>
+        </div>
+    </main>
+</body>
+</html>

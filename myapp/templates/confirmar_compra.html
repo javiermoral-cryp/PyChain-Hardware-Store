@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  {% load static %}
+  <meta charset="UTF-8">
+  <title>Confirmar compra</title>
+  <link rel="stylesheet" href="{% static 'bootstrap.min.css' %}">
+</head>
+<body>
+
+<main class="container py-5">
+  <div class="card shadow-sm">
+    <div class="card-body">
+
+      <h2 class="mb-4">🧾 Tu carrito</h2>
+
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Cantidad</th>
+            <th>Precio</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in carrito.values %}
+          <tr>
+            <td>{{ item.nombre }}</td>
+            <td>{{ item.cantidad }}</td>
+            <td>{{ item.precio }} €</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <h4 class="mt-3">Total: {{ total }} €</h4>
+
+      <div class="d-flex gap-2 mt-4">
+        <!-- Botón MetaMask -->
+        <button type="button" class="btn btn-primary" onclick="payWithMetamask()">
+          🪙 Pagar con MetaMask
+        </button>
+
+        <!-- Botón Stripe -->
+        <button type="button" class="btn btn-warning" onclick="pagarConTarjeta()">
+          💳 Pagar con tarjeta
+        </button>
+
+        <!-- Cancelar -->
+        <a href="{% url 'ver_carrito' %}" class="btn btn-outline-secondary">
+          ❌ Cancelar
+        </a>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<!-- CSRF para JS -->
+<script>
+  const csrfToken = "{{ csrf_token }}";
+</script>
+
+<!-- MetaMask Script -->
+<script>
+async function payWithMetamask() {
+  if (!window.ethereum) { alert("Instala MetaMask"); return; }
+  const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+  const account = accounts[0];
+  const valueInWei = "10000000000000000"; // 0.01 ETH
+  const tx = { from: account, to: "0xb0567077767316310eDB853f9A569dCC828117B8", value: valueInWei, gas: "0x5208" };
+  try {
+    const txHash = await ethereum.request({ method: "eth_sendTransaction", params: [tx] });
+    const res = await fetch("/save-crypto-payment/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
+      body: JSON.stringify({ wallet: account, tx_hash: txHash, amount: "{{ total }}" })
+    });
+    const data = await res.json();
+    if (data.status === "ok") { alert("Pago MetaMask confirmado! Tx: " + txHash); window.location.reload(); }
+    else { alert("Error guardando pago: " + data.error); }
+  } catch(err) { console.error(err); alert("Error en transacción: " + err.message); }
+}
+</script>
+
+<!-- Stripe Script -->
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+const stripe = Stripe("{{ STRIPE_PUBLIC_KEY }}");
+async function pagarConTarjeta() {
+  try {
+    const res = await fetch("/crear_pago_tarjeta/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
+      body: JSON.stringify({ total: "{{ total }}" })
+    });
+    const data = await res.json();
+    const result = await stripe.redirectToCheckout({ sessionId: data.id });
+    if (result.error) { alert(result.error.message); }
+  } catch(err) {
+    console.error(err);
+    alert("Error al iniciar pago con tarjeta: " + err.message);
+  }
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,81 @@
+<style>
+    .login-container {
+        max-width: 350px;
+        margin: 50px auto;
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0px 4px 15px rgba(0,0,0,0.15);
+        background: white;
+        font-family: Arial, sans-serif;
+    }
+
+    .login-container h2 {
+        text-align: center;
+        margin-bottom: 20px;
+        color: #333;
+        font-weight: 600;
+    }
+
+    .login-container input {
+        width: 100%;
+        padding: 12px;
+        margin: 10px 0;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+        font-size: 15px;
+    }
+
+    .login-container button {
+        width: 100%;
+        padding: 12px;
+        background: #007bff;
+        border: none;
+        color: white;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: 0.2s;
+    }
+
+    .login-container button:hover {
+        background: #0056b3;
+    }
+
+    .login-container .link {
+        text-align: center;
+        margin-top: 15px;
+        font-size: 14px;
+    }
+
+    .login-container .link a {
+        color: #007bff;
+        text-decoration: none;
+    }
+
+    .login-container .error {
+        color: red;
+        text-align: center;
+        margin-top: 10px;
+        font-size: 14px;
+    }
+</style>
+
+
+<div class="login-container">
+    <h2>Iniciar sesión</h2>
+
+    <form method="post">
+        {% csrf_token %}
+        <input type="text" name="username" placeholder="Usuario">
+        <input type="password" name="password" placeholder="Contraseña">
+        <button type="submit">Entrar</button>
+    </form>
+
+    {% if error %}
+        <p class="error">{{ error }}</p>
+    {% endif %}
+
+    <p class="link">¿No tienes cuenta?
+        <a href="{% url 'registro_cliente' %}">Crear cuenta</a>
+    </p>
+</div>

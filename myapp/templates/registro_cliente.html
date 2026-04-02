@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Registro Cliente</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #74b9ff, #0984e3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .card {
+            background: white;
+            padding: 35px;
+            width: 380px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+
+        h2 {
+            margin-bottom: 20px;
+            color: #2d3436;
+        }
+
+        label {
+            display: block;
+            text-align: left;
+            font-weight: bold;
+            margin-top: 12px;
+            margin-bottom: 5px;
+            color: #2d3436;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #b2bec3;
+            border-radius: 6px;
+        }
+
+        button {
+            margin-top: 20px;
+            width: 100%;
+            padding: 12px;
+            background: #0984e3;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #0768b3;
+        }
+
+        .errores {
+            color: red;
+            text-align: left;
+            margin-bottom: 10px;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="card">
+
+    <h2>Crear nueva cuenta de cliente</h2>
+
+    {% if form.errors %}
+    <ul class="errores">
+        {% for field in form %}
+            {% for error in field.errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+        {% endfor %}
+        {% for error in form.non_field_errors %}
+            <li>{{ error }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    <form method="POST">
+        {% csrf_token %}
+
+        {% for field in form %}
+            <label>{{ field.label }}</label>
+            {{ field }}
+        {% endfor %}
+
+        <button type="submit">Registrarse</button>
+    </form>
+
+</div>
+
+</body>
+</html>

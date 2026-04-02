@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="UTF-8">
+    <title>Pagina de inicio</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding-top: 100px;
+        }
+         h1 {
+            margin-bottom: 30px;
+        }
+        .botones a {
+            display: inline-block;
+            margin: 10px;
+            padding: 15px 30px;
+            font-size: 16px;
+            color: white;
+            background-color: #007BFF;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .botones a:hover {
+            background-color: #0056b3;
+        }
+    </style>
+
+</head>
+<body>
+    <h1>Bienvenido</h1>
+    <p>¿Cómo deseas iniciar sesión?</p>
+    <div class="botones">
+        <a href="{% url 'login_cliente' %}">Soy Cliente</a>
+        <a href="{% url 'login_admin' %}">Soy Administrador</a>
+    </div>
+    </style>
+
+</body>
+</html>

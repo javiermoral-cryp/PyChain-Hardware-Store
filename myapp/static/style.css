@@ -1,0 +1,102 @@
+.card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* Botón carrito */
+.carrito {
+    float: right;
+    margin: 10px;
+    font-size: 18px;
+    font-weight: bold;
+    text-decoration: none;
+    color: #0d6efd;
+}
+.carrito:hover {
+    color: #0a58ca;
+}
+
+/* Sidebar filtros */
+#sidebarFiltros .form-label {
+    font-weight: bold;
+}
+
+html { font-size: 15px; }        /* 16px -> 15px */
+body { line-height: 1.55; }
+
+/* Títulos con menos “peso” visual y más separación */
+h1 { font-size: 1.9rem; margin-bottom: 0.75rem; }
+h2 { font-size: 1.25rem; margin-bottom: 0.75rem; }
+
+/* Offcanvas un poco más cómodo */
+.offcanvas-start { width: 360px; }
+
+/* Cards más contenidas y aireadas */
+#productos .card { border-radius: 1rem; }
+#productos .card-img-top { height: 170px; }
+#productos .card-body { padding: 0.75rem 1rem; }
+#productos .card-title { font-size: 1rem; margin-bottom: 0.25rem; }
+#productos .card-text { font-size: 0.95rem; }
+#productos .card .btn { padding: 0.45rem 0.75rem; }
+
+/* Separaciones verticales de secciones */
+.section-spacing { margin-top: 1.25rem; margin-bottom: 1.75rem; }
+
+/* Ajusta el botón lupa y enlaces para que respiren */
+.d-flex.gap-3 > a,
+.d-flex.gap-3 > button { margin-top: 0.25rem; margin-bottom: 0.25rem; }
+
+
+.container-lg { max-width: 1080px; }
+
+/*grafico de clientes*/
+#graficoContainer canvas {
+  max-height: 420px;
+}
+/* Offcanvas de ventas a media pantalla en >= 992px */
+@media (min-width: 992px) {
+  .ventas-offcanvas {
+    width: 50vw;
+    max-width: 720px; /* opcional */
+  }
+}
+
+/* En móviles ocupa el ancho completo (comportamiento por defecto) */
+html { font-size: 15px; }   /* antes 16px */
+body { line-height: 1.5; }
+
+/* Cards más contenidas */
+#productos .card {
+  max-width: 15rem;         /* menos anchas */
+  margin-left: auto;
+  margin-right: auto;
+  font-size: 0.9rem;        /* texto más pequeño */
+}
+#productos .card-title { font-size: 1rem; }
+#productos .card-text { font-size: 0.9rem; }
+#productos .card-img-top { height: 160px; } /* un pelín más bajas */
+
+
+/* Cinta de oferta (ribbon) */
+.card { position: relative; overflow: hidden; }
+.ribbon {
+  width: 130px; height: 130px; overflow: hidden; position: absolute; z-index: 2;
+}
+.ribbon-top-right { top: -6px; right: -6px; }
+.ribbon-top-right span {
+  position: absolute; display: block; width: 180px; padding: 6px 0;
+  background: linear-gradient(90deg, #ff4d4f, #ff7a45);
+  color: #fff; text-align: center; font-weight: 700; letter-spacing: .5px;
+  transform: rotate(45deg); right: -40px; top: 18px; box-shadow: 0 2px 6px rgba(0,0,0,.2);
+}
+
+
+/* Precio destacado en oferta */
+.precio-oferta {
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: #d4380d; /* tono llamativo */
+}
