@@ -4,6 +4,23 @@ Full-stack web application for managing and selling computer products, featuring
 
 This project demonstrates the ability to develop complete business-oriented solutions that provide full control over product catalog, sales, and commercial performance metrics.
 
+## Preview
+
+### Store Interface
+![Store](screenshots/homepage.png)
+
+### Product Page
+![Product](screenshots/product-page.png)
+
+### Admin Dashboard
+![Admin](screenshots/admin-dashboard.png)
+
+### Sales Analytics
+![Analytics](screenshots/analytics.png)
+
+### Web3 Payment Integration
+![MetaMask](screenshots/metamask-payment.png)
+
 Key Features
 User Experience
 Dynamic computer products catalog
