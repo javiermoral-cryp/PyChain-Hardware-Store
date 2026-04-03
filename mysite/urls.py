@@ -50,8 +50,8 @@ urlpatterns = [
     path('panel/api/analitica/', views.admin_analytics_data, name='admin_analytics_data'),
     path('panel/api/analitica/stats/', views.admin_analytics_stats, name='admin_analytics_stats'),
     path('panel/api/historial/producto/<int:producto_id>/', views.admin_historial_producto, name='admin_historial_producto'),
-    path("confirmar-compra/", views.confirmar_compra, name="confirmar_compra"),
-    path("realizar-compra/", views.realizar_compra, name="realizar_compra"),
+    path("confirmar_compra/", views.confirmar_compra, name="confirmar_compra"),
+    path("realizar_compra/", views.realizar_compra, name="realizar_compra"),
 
     path('save-crypto-payment/', views.save_crypto_payment, name='save_crypto_payment'),
     path('crear_pago_tarjeta/', views.crear_pago_tarjeta, name='crear_pago_tarjeta'),

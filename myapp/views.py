@@ -263,7 +263,7 @@ def añadir_carrito(request, producto_id):
         carrito[str(producto_id)] = {
             "producto_id": producto.id,
             "nombre": producto.nombre,
-            "precio": D(producto.precio),
+            "precio": str(D(producto.precio)),
             "cantidad": cantidad
         }
 
@@ -276,15 +276,15 @@ def ver_carrito(request):
     carrito = request.session.get('carrito', {})
 
     productos = []
-    total = 0
+    total = D('0')
     for item in carrito.values():
-        subtotal = item["precio"] * item["cantidad"]
+        subtotal = D(item["precio"]) * int(item["cantidad"])
         total += subtotal
         productos.append({
             "producto_id": item["producto_id"],
             "nombre": item["nombre"],
-            "precio": item["precio"],
-            "cantidad": item["cantidad"],
+            "precio": D(item["precio"]),
+            "cantidad": int(item["cantidad"]),
             "subtotal": subtotal
         })
 
